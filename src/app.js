@@ -22,6 +22,8 @@
     txt: '<svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/></svg>',
     arrow: '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
     up: '<svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>',
+    save: '<svg viewBox="0 0 24 24"><path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3M7 21v-7h10v7"/></svg>',
+    restoreFile: '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>',
     down: '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
     eraser: '<svg viewBox="0 0 24 24"><path d="m7 21-4-4L14 6l7 7-8 8z"/><path d="M22 21H7"/></svg>',
     max: '<svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>',
@@ -37,10 +39,49 @@
   let lastFore = FORE[0], lastBack = BACK[0];
 
   /* ================= iestatījumi ================= */
+  /* Iestatījumi glabājas gan localStorage (ātrai startēšanai), gan meta.json → prefs
+   * (lai tie nonāk rezerves kopijās un nepazūd kopā ar WebView datiem). */
+  const PREF_KEYS = ['theme', 'font', 'zoom', 'view', 'sort', 'lang'];
+  let metaReady = false, prefTimer = 0;
   const pref = {
     get(k, d) { try { return localStorage.getItem('np_' + k) ?? d; } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem('np_' + k, v); } catch (e) { } }
+    set(k, v) {
+      try { localStorage.setItem('np_' + k, v); } catch (e) { }
+      if (!metaReady) return;   // līdz meta ielādei neko nepārrakstām
+      meta.prefs = meta.prefs || {};
+      if (meta.prefs[k] === String(v)) return;
+      meta.prefs[k] = String(v);
+      clearTimeout(prefTimer);
+      prefTimer = setTimeout(saveMeta, 400);
+    }
   };
+  /** Pēc meta ielādes: iestatījumi no faila → localStorage un pārzīmēšana */
+  function syncPrefs() {
+    if (meta.prefs && typeof meta.prefs === 'object') {
+      for (const k of PREF_KEYS) {
+        const v = meta.prefs[k];
+        if (typeof v === 'string') { try { localStorage.setItem('np_' + k, v); } catch (e) { } }
+      }
+      if (meta.prefs.lang && meta.prefs.lang !== I18n.lang) I18n.setLang(meta.prefs.lang);
+      applyTheme();
+      applyFont();
+      zoom = Math.min(2.5, Math.max(0.6, parseFloat(pref.get('zoom', '1')) || 1));
+      applyZoom(false);
+      view = VIEWS.includes(pref.get('view', 'medium')) ? pref.get('view', 'medium') : 'medium';
+      applyView();
+      $('sortSel').value = pref.get('sort', 'updated');
+      applyLang();
+    } else {
+      // Pirmā reize: esošos iestatījumus ierakstām failā
+      meta.prefs = {};
+      for (const k of PREF_KEYS) {
+        let v = null;
+        try { v = localStorage.getItem('np_' + k); } catch (e) { }
+        if (v !== null) meta.prefs[k] = v;
+      }
+      saveMeta();
+    }
+  }
   function applyTheme() {
     document.documentElement.dataset.theme = pref.get('theme', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   }
@@ -90,7 +131,7 @@
     const r = $('langBtn').getBoundingClientRect();
     menu(r.left - 60, r.bottom + 4, Object.entries(I18n.LANGS).map(([code, l]) => ({
       label: `<b class="lang-code${code === I18n.lang ? ' on' : ''}">${code.toUpperCase()}</b>${l.name}`,
-      action: () => { I18n.setLang(code); applyLang(); }
+      action: () => { I18n.setLang(code); pref.set('lang', code); applyLang(); }
     })));
   };
 
@@ -104,6 +145,7 @@
   $('wMax').onclick = () => win && win.toggleMaximize();
   $('wClose').onclick = async () => {
     try { await flushSave(); } catch (e) { }
+    try { await Store.backup.now(false); } catch (e) { }
     if (win) win.close(); else window.close();
   };
   if (win) { win.onResized(syncMaxIcon); syncMaxIcon(); }
@@ -256,7 +298,76 @@
     meta = await Store.loadMeta();
     if (!Array.isArray(meta.categories)) meta.categories = [];
     notebooks.forEach(nb => { if (!nb.tabs || !nb.tabs.length) nb.tabs = [{ id: uid(), title: t('defaultTab'), html: '' }]; });
+    metaReady = true;
+    syncPrefs();
     renderHome();
+  }
+
+  /* ================= rezerves kopijas ================= */
+  const fmtStamp = s => {
+    const m = /^(\d{4})-(\d\d)-(\d\d)_(\d\d)-(\d\d)/.exec(s || '');
+    return m ? I18n.full(new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5]).getTime()) : s;
+  };
+  async function autoBackup() {
+    try { await Store.backup.now(false); } catch (e) { console.warn('backup', e); }
+  }
+  async function restoreFrom(b) {
+    const ok = await modal({
+      title: t('restoreQ'),
+      body: `<p>${t('restoreBody', esc(fmtStamp(b.stamp)), t('notes', b.count))}</p>`,
+      ok: t('restore'), danger: true
+    });
+    if (!ok) return;
+    try {
+      if (current) await closeNotebook(true);
+      await flushSave();
+      const n = await Store.backup.restore(b.name);
+      metaReady = false;
+      await loadAll();
+      toast(t('restored', t('notes', n)));
+    } catch (e) { toast(t('restoreFailed', e)); }
+  }
+  async function backupMenu(x, y) {
+    let list = [];
+    try { list = await Store.backup.list(); } catch (e) { toast(String(e)); }
+    menu(x, y, [
+      { label: t('backupNow'), icon: ICON.save || ICON.copy, action: async () => {
+        try {
+          const name = await Store.backup.now(true);
+          toast(name ? t('backupDone') : t('backupEmpty'));
+        } catch (e) { toast(t('saveFailed', e)); }
+      } },
+      { label: t('backupFolder'), icon: ICON.folder, action: async () => {
+        const dir = await Store.backup.openDir();
+        if (dir) toast(dir);
+      } },
+      ...(list.length ? ['-'] : []),
+      ...list.slice(0, 12).map(b => ({
+        label: `${esc(fmtStamp(b.stamp))} · ${t('notes', b.count)}`,
+        icon: ICON.restoreFile,
+        action: () => restoreFrom(b)
+      }))
+    ]);
+  }
+  /** Ja piezīmju nav, bet ir rezerves kopija – piedāvājam atjaunot */
+  async function offerRestoreIfEmpty() {
+    if (notebooks.length || !Store.isTauri) return;
+    let list = [];
+    try { list = await Store.backup.list(); } catch (e) { return; }
+    const b = list.find(x => x.count > 0);
+    if (!b) return;
+    const ok = await modal({
+      title: t('emptyFoundBackup'),
+      body: `<p>${t('emptyFoundBackupBody', esc(fmtStamp(b.stamp)), t('notes', b.count))}</p>`,
+      ok: t('restore')
+    });
+    if (!ok) return;
+    try {
+      const n = await Store.backup.restore(b.name);
+      metaReady = false;
+      await loadAll();
+      toast(t('restored', t('notes', n)));
+    } catch (e) { toast(t('restoreFailed', e)); }
   }
   function saveMeta() { Store.saveMeta(meta).catch(e => toast(t('saveFailed', e))); }
   const catOf = nb => (nb.category && meta.categories.some(c => c.id === nb.category)) ? nb.category : null;
@@ -419,6 +530,8 @@
     ]);
   }
   $('addCatBtn').onclick = addCategory;
+  $('backupBtn').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); backupMenu(r.left, r.bottom + 4); };
+  $('backupBtn').style.display = Store.isTauri ? '' : 'none';
 
   async function newNotebook(category) {
     const title = await modal({ title: t('newNoteTitle'), body: `<p style="margin-bottom:10px">${t('newNotePrompt')}</p>`, input: '', ok: t('create') });
@@ -1018,5 +1131,9 @@
   setInterval(() => { if (!current) renderHome(); }, 60e3);
 
   applyLang();
-  loadAll();
+  loadAll().then(async () => {
+    await offerRestoreIfEmpty();
+    autoBackup();                              // startā – iepriekšējās sesijas stāvoklis
+    setInterval(autoBackup, 20 * 60 * 1000);   // un ik pēc 20 min (tikai, ja kas mainījies)
+  });
 })();

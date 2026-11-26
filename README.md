@@ -36,7 +36,19 @@ Built with [Tauri 2](https://tauri.app) (Rust) and plain HTML/CSS/JS: ~6 MB exec
 
 ## Data location
 
-`%APPDATA%\lv.noteplus.app\notebooks\<id>.json` — one JSON file per note.
+The installer puts the app in `C:\Program Files\JKapps\Note+` (it asks for admin rights once).
+
+`%LOCALAPPDATA%\JKapps\Note+\notebooks\<id>.json` — one JSON file per note.
+`%LOCALAPPDATA%\JKapps\Note+\meta.json` — categories and UI settings (theme, view, language, zoom).
+
+### Backups
+
+Note+ keeps automatic backups in **`Documents\Note+\backups`**, outside the app data folder. They survive an uninstall, even with *"Delete the application data"* ticked.
+
+- A backup is written on start, every 20 minutes and on close, but only when something changed.
+- Empty states are never backed up, and the last 30 backups are kept.
+- The **Backups** button on the home screen backs up now, opens the folder or restores a backup. Your current notes are backed up before a restore.
+- If the app starts with no notes but a backup exists, it offers to restore it.
 
 ## Download
 

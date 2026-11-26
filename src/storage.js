@@ -1,5 +1,5 @@
 /* Datu glabāšana.
- * Tauri: katra piezīme = JSON fails %APPDATA%\lv.noteplus.app\notebooks\<id>.json
+ * Tauri: katra piezīme = JSON fails %LOCALAPPDATA%\JKapps\Note+\notebooks\<id>.json
  * Pārlūkā (testēšanai): localStorage. */
 const Store = (() => {
   const tauri = window.__TAURI__ && window.__TAURI__.core;
@@ -56,9 +56,21 @@ const Store = (() => {
     return defaultName;
   }
 
+  /** Rezerves kopijas (tikai Tauri): Dokumenti\Note+\backups */
+  function stamp() {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
+  }
+  const backup = {
+    now: (force = false) => tauri ? tauri.invoke('backup_now', { stamp: stamp(), force }) : Promise.resolve(null),
+    list: () => tauri ? tauri.invoke('list_backups') : Promise.resolve([]),
+    restore: name => tauri.invoke('restore_backup', { name, stamp: stamp() }),
+    openDir: () => tauri ? tauri.invoke('open_backups_dir') : Promise.resolve('')
+  };
+
   const win = window.__TAURI__ && window.__TAURI__.window ? window.__TAURI__.window.getCurrentWindow() : null;
 
-  return { list, save, remove, dataDir, loadMeta, saveMeta, exportFile, win, isTauri: !!tauri };
+  return { list, save, remove, dataDir, loadMeta, saveMeta, exportFile, backup, win, isTauri: !!tauri };
 })();
 
 function uid() {

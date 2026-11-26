@@ -6,7 +6,13 @@ Personiska pierakstu grāmatiņa Windows datoram (Tauri 2 + vienkāršs HTML/JS)
 - `src/` – saskarne (`index.html`, `styles.css`, `storage.js`, `editor.js`, `app.js`)
 - `src-tauri/` – Rust daļa (failu saglabāšana), ikonas, konfigurācija
 - `_materials/` – oriģinālā ikona `AppIcons_Note+.svg`
-- Dati: `%APPDATA%\lv.noteplus.app\notebooks\<id>.json` (dzēstās grāmatiņas → `_trash`)
+- Instalācija: `C:\Program Files\JKapps\Note+`
+- Dati: `%LOCALAPPDATA%\JKapps\Note+\notebooks\<id>.json` (dzēstās piezīmes → `_trash`), kategorijas un iestatījumi → `meta.json`
+- **Rezerves kopijas:** `Dokumenti\Note+\backups`
+  - Atrodas ārpus programmas datu mapes, tāpēc atinstalētājs tās neizdzēš.
+  - Kopija tiek veidota startā, ik pēc 20 min un aizverot, ja kas mainījies; glabā pēdējās 30.
+  - Poga “Kopijas” sākuma ekrānā: izveidot kopiju, atvērt mapi, atjaunot.
+  - Ja piezīmju nav, bet ir kopija, programma startā piedāvā to atjaunot.
 
 ## Komandas
 ```powershell
