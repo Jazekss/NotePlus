@@ -498,3 +498,16 @@ body.mode-nb .search input { padding-right: 104px; }
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; border: 3px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--text-3); }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ================= Par programmu ================= */
+.about { text-align: center; padding: 4px 6px 0; }
+.about-logo { width: 64px; height: 64px; margin: 2px auto 8px; display: block; }
+.about-name { font-size: 18px; font-weight: 650; color: var(--accent); }
+.about-name span { font-size: 12px; font-weight: 500; color: var(--text-3); margin-left: 4px; }
+.about-desc { color: var(--text-2); font-size: 12.5px; line-height: 1.5; margin: 8px 0 14px; }
+.about-list { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; text-align: left; font-size: 12.5px; margin: 0 auto; max-width: 340px; }
+.about-list dt { color: var(--text-3); }
+.about-list dd { margin: 0; color: var(--text); }
+.about-list a { color: var(--accent); text-decoration: none; }
+.about-list a:hover { text-decoration: underline; }
+.about-small { margin-top: 14px; font-size: 11px; color: var(--text-3); }

@@ -1,6 +1,6 @@
 [package]
 name = "noteplus"
-version = "0.3.1"
+version = "0.3.2"
 description = "Note+ - personiska pierakstu grāmatiņa"
 edition = "2021"
 

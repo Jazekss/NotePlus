@@ -70,6 +70,9 @@ const I18n = (() => {
       'restoreBody': 'The state from {0} ({1}) will be restored. Your current notes are saved as a separate backup first.',
       'restored': 'Restored: {0}', 'restoreFailed': 'Could not restore: {0}',
       'emptyFoundBackup': 'No notes found', 'emptyFoundBackupBody': 'A backup from {0} ({1}) was found. Restore it?',
+      'about': 'Par programmu', 'aboutDesc': 'Neliela, ātra bezsaistes piezīmju programma projektu pierakstiem – Notepad++ sajūta un kartiņu pārskats.', 'author': 'Autors', 'sourceCode': 'Pirmkods', 'feedback': 'Atsauksmes', 'reportIssue': 'Ziņot par kļūdu / ideju', 'license': 'Licence',
+      'about': 'About', 'aboutDesc': 'A small, fast, offline notebook for project notes – the feel of Notepad++ with a card dashboard.', 'author': 'Author', 'sourceCode': 'Source code', 'feedback': 'Feedback', 'reportIssue': 'Report a bug / idea', 'license': 'License',
+      'about': 'О программе', 'aboutDesc': 'Небольшой быстрый офлайн-блокнот для заметок по проектам – ощущение Notepad++ и обзор карточками.', 'author': 'Автор', 'sourceCode': 'Исходный код', 'feedback': 'Отзывы', 'reportIssue': 'Сообщить об ошибке / идее', 'license': 'Лицензия',
       'tabs': n => n % 10 === 1 && n % 100 !== 11 ? `${n} cilne` : `${n} cilnes`,
       'notes': n => n % 10 === 1 && n % 100 !== 11 ? `${n} piezīme` : `${n} piezīmes`
     },

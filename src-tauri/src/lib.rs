@@ -348,6 +348,21 @@ fn open_backups_dir(app: AppHandle) -> Result<String, String> {
     Ok(dir.to_string_lossy().to_string())
 }
 
+/// Atver saiti noklusētajā pārlūkā (tikai https://github.com/Jazekss/…)
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    let ok = url.starts_with("https://github.com/Jazekss")
+        && url.chars().all(|c| c.is_ascii_alphanumeric() || "/:.-_".contains(c));
+    if !ok {
+        return Err("Neatļauta saite".into());
+    }
+    std::process::Command::new("explorer")
+        .arg(&url)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 #[derive(Deserialize)]
 struct ExportImage {
     name: String,
@@ -432,7 +447,8 @@ pub fn run() {
             backup_now,
             list_backups,
             restore_backup,
-            open_backups_dir
+            open_backups_dir,
+            open_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

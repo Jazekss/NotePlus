@@ -123,6 +123,39 @@
     pref.set('theme', document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
     applyTheme();
   };
+  /* --- Par programmu --- */
+  const LINKS = { repo: 'https://github.com/Jazekss/NotePlus', profile: 'https://github.com/Jazekss', issues: 'https://github.com/Jazekss/NotePlus/issues' };
+  async function appVersion() {
+    try { return await window.__TAURI__.app.getVersion(); } catch (e) { return '—'; }
+  }
+  function openUrl(url) {
+    if (Store.isTauri) window.__TAURI__.core.invoke('open_url', { url }).catch(e => toast(String(e)));
+    else window.open(url, '_blank', 'noopener');
+  }
+  $('aboutBtn').onclick = async () => {
+    const v = await appVersion();
+    const p = modal({
+      title: t('about'),
+      cancel: false,
+      body: `<div class="about">
+        <img src="logo.svg" alt="" class="about-logo">
+        <div class="about-name">Note+ <span>v${esc(v)}</span></div>
+        <p class="about-desc">${t('aboutDesc')}</p>
+        <dl class="about-list">
+          <dt>${t('author')}</dt><dd>Jazekss · JKapps</dd>
+          <dt>GitHub</dt><dd><a href="#" data-url="profile">github.com/Jazekss</a></dd>
+          <dt>${t('sourceCode')}</dt><dd><a href="#" data-url="repo">github.com/Jazekss/NotePlus</a></dd>
+          <dt>${t('feedback')}</dt><dd><a href="#" data-url="issues">${t('reportIssue')}</a></dd>
+          <dt>${t('license')}</dt><dd>MIT · © 2026 Jazekss</dd>
+        </dl>
+        <p class="about-small">Tauri 2 · Rust · HTML/CSS/JS</p>
+      </div>`
+    });
+    $('modalBody').querySelectorAll('a[data-url]').forEach(a => {
+      a.onclick = e => { e.preventDefault(); openUrl(LINKS[a.dataset.url]); };
+    });
+    await p;
+  };
   $('viewSeg').onclick = e => {
     const b = e.target.closest('button');
     if (b) { view = b.dataset.v; applyView(); }
@@ -1126,7 +1159,22 @@
     }
     else if (ctrl && e.shiftKey && e.code === 'KeyH') { e.preventDefault(); setColor('back', lastBack); }
     else if (e.altKey && !e.ctrlKey && e.key === 'ArrowLeft') { e.preventDefault(); closeNotebook(); }
+    else if (e.key === 'BrowserBack') { e.preventDefault(); closeNotebook(); }
+    // Backspace – tikai, ja kursors nav teksta laukā / redaktorā
+    else if (e.key === 'Backspace' && !ctrl && !e.altKey && !e.target.closest('input, textarea, select, [contenteditable="true"]')) {
+      e.preventDefault(); closeNotebook();
+    }
   });
+
+  /* Peles "Atpakaļ" poga (XButton1) → uz sākumu; "Uz priekšu" – neko nedara */
+  const isSideBtn = e => e.button === 3 || e.button === 4;
+  ['mousedown', 'mouseup', 'auxclick'].forEach(ev => document.addEventListener(ev, e => {
+    if (!isSideBtn(e)) return;
+    e.preventDefault();   // neļaujam WebView pašam pārvietoties vēsturē
+    if (ev === 'mouseup' && e.button === 3 && current && $('modal').classList.contains('hidden')) closeNotebook();
+  }));
+  window.addEventListener('popstate', () => { history.pushState(null, '', location.href); });
+  history.pushState(null, '', location.href);
 
   setInterval(() => { if (!current) renderHome(); }, 60e3);
 
