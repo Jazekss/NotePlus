@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="lv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Note+</title>
+  <link rel="icon" href="logo.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="mode-home">
+  <!-- ============ AUGŠĒJĀ JOSLA (loga rāmis) ============ -->
+  <header class="titlebar" data-tauri-drag-region>
+    <div class="tb-left" data-tauri-drag-region>
+      <img src="logo.svg" alt="" class="app-logo" data-tauri-drag-region draggable="false" />
+      <button class="icon-btn nb-only" id="backBtn" title="Uz sākumu (Alt+←)">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="nb-title nb-only" id="nbTitle" title="Klikšķini, lai pārsauktu"></div>
+      <div class="tb-fill" data-tauri-drag-region></div>
+    </div>
+    <div class="tb-center" data-tauri-drag-region>
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" type="search" placeholder="Meklēt piezīmēs…" autocomplete="off" spellcheck="false" />
+        <span class="fcount nb-only" id="fCount"></span>
+        <button class="nb-only f-nav" id="fPrev" title="Iepriekšējais (Shift+Enter)"><svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
+        <button class="nb-only f-nav" id="fNext" title="Nākamais (Enter)"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+      </div>
+    </div>
+    <div class="tb-right" data-tauri-drag-region>
+      <div class="tb-fill" data-tauri-drag-region></div>
+      <button class="icon-btn nb-only" id="exportBtn" title="Eksportēt (.md / .txt)">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" title="Gaišs / tumšs režīms">
+        <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <button class="icon-btn home-only" id="newNotebookBtn" title="Jauna piezīme (Ctrl+N)">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <div class="winctl">
+        <button id="wMin" title="Minimizēt"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button>
+        <button id="wMax" title="Maksimizēt"><svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg></button>
+        <button id="wClose" class="close" title="Aizvērt"><svg viewBox="0 0 12 12"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ SĀKUMA EKRĀNS ============ -->
+  <section id="home" class="view">
+    <div class="home-sub">
+      <div class="count" id="countLbl"></div>
+      <div class="home-ctl">
+        <label>Kārtot
+          <select id="sortSel">
+            <option value="updated">pēc izmaiņām</option>
+            <option value="title">pēc nosaukuma</option>
+            <option value="created">pēc izveides</option>
+          </select>
+        </label>
+        <div class="seg" id="viewSeg" title="Skats (arī Ctrl + peles ritulis)">
+          <button data-v="list" title="Saraksts"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+          <button data-v="small" title="Mazas kartiņas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="10" y="3" width="5" height="5" rx="1"/><rect x="17" y="3" width="4" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/><rect x="17" y="10" width="4" height="5" rx="1"/></svg></button>
+          <button data-v="medium" title="Vidējas kartiņas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></button>
+          <button data-v="large" title="Lielas kartiņas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="11" rx="1.5"/><path d="M3 18h18M3 21h12"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <main id="cards" class="cards v-medium"></main>
+  </section>
+
+  <!-- ============ PIEZĪMES SKATS ============ -->
+  <section id="notebook" class="view hidden">
+    <div class="toolbar" id="toolbar">
+      <select id="blockSel" title="Rindas stils">
+        <option value="div">Teksts</option>
+        <option value="h1">Virsraksts 1</option>
+        <option value="h2">Virsraksts 2</option>
+        <option value="h3">Virsraksts 3</option>
+      </select>
+      <span class="sep"></span>
+      <button data-cmd="bold" title="Treknraksts (Ctrl+B)"><b>B</b></button>
+      <button data-cmd="italic" title="Slīpraksts (Ctrl+I)"><i>I</i></button>
+      <button data-cmd="underline" title="Pasvītrots (Ctrl+U)"><u>U</u></button>
+      <button data-cmd="strikeThrough" title="Pārsvītrots (Ctrl+Shift+X)"><s>S</s></button>
+      <span class="sep"></span>
+      <div class="dd">
+        <button data-dd="fore" title="Teksta krāsa" class="color-btn">
+          <span class="a-letter">A</span><span class="swatch" id="foreSwatch"></span>
+        </button>
+        <div class="dd-menu palette" id="forePal"></div>
+      </div>
+      <div class="dd">
+        <button data-dd="back" title="Iekrāsot fonu (Ctrl+Shift+H)" class="color-btn">
+          <svg viewBox="0 0 24 24"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+          <span class="swatch" id="backSwatch"></span>
+        </button>
+        <div class="dd-menu palette" id="backPal"></div>
+      </div>
+      <button data-cmd="removeFormat" title="Notīrīt formatējumu">
+        <svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/><path d="m3 3 18 18"/></svg>
+      </button>
+      <span class="sep"></span>
+      <button data-act="ul" title="Punkti  (rindas sākumā: “- ”)">
+        <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1.2" class="fill"/><circle cx="4" cy="12" r="1.2" class="fill"/><circle cx="4" cy="18" r="1.2" class="fill"/></svg>
+      </button>
+      <button data-act="ol" title="Numurēts saraksts  (rindas sākumā: “1. ”)">
+        <svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><text x="1.5" y="8.5" class="t">1</text><text x="1.5" y="14.5" class="t">2</text><text x="1.5" y="20.5" class="t">3</text></svg>
+      </button>
+      <button data-act="ola" title="Saraksts ar burtiem  (rindas sākumā: “a. ”)">
+        <svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><text x="1.5" y="8.5" class="t">a</text><text x="1.5" y="14.5" class="t">b</text><text x="1.5" y="20.5" class="t">c</text></svg>
+      </button>
+      <button data-act="check" title="Uzdevumu saraksts  (rindas sākumā: “[] ”)">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="6" height="6" rx="1"/><path d="m4.5 7 1.2 1.2L8 5.8"/><rect x="3" y="14" width="6" height="6" rx="1"/><path d="M12 7h9M12 17h9"/></svg>
+      </button>
+      <span class="sep"></span>
+      <button data-act="inlinecode" title="Kods rindā (Ctrl+E)">
+        <svg viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>
+      </button>
+      <button data-act="code" title="Koda bloks (Ctrl+Shift+K vai “``` ”)">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m9 10-2 2 2 2M15 10l2 2-2 2"/></svg>
+      </button>
+      <button data-act="cmd" title="Komandas bloks (Ctrl+Shift+M vai “$$ ”)">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 10 3 2-3 2M12 15h5"/></svg>
+      </button>
+      <span class="sep"></span>
+      <button data-act="image" title="Ievietot attēlu (vai ielīmē / ievelc)">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/></svg>
+      </button>
+      <button data-act="hr" title="Atdalītājlīnija">
+        <svg viewBox="0 0 24 24"><path d="M3 12h18"/></svg>
+      </button>
+      <div class="toolbar-right">
+        <span class="zoom-lbl" id="zoomLbl" title="Teksta izmērs (Ctrl + peles ritulis, Ctrl+0 – atiestatīt)"></span>
+        <button data-act="font" title="Pamatteksta fonts: parasts / monospace" class="txt" id="fontBtn">Aa</button>
+      </div>
+    </div>
+
+    <div class="tabbar">
+      <div class="tabs" id="tabs"></div>
+      <button class="tab-add" id="addTabBtn" title="Jauna cilne (Ctrl+T)">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+
+    <div class="editor-wrap" id="editorWrap"></div>
+
+    <footer class="statusbar">
+      <span id="stLines"></span>
+      <span id="stWords"></span>
+      <span id="stChars"></span>
+      <span class="grow"></span>
+      <span id="stSaved" class="saved">Saglabāts</span>
+    </footer>
+  </section>
+
+  <div id="lightbox" class="lightbox hidden"><img alt="" /></div>
+  <div id="ctxMenu" class="ctx hidden"></div>
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="modalTitle"></h3>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button class="btn" id="modalCancel">Atcelt</button>
+        <button class="btn primary" id="modalOk">Labi</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <input type="file" id="fileImg" accept="image/*" hidden />
+  <input type="file" id="fileLogo" accept="image/*" hidden />
+
+  <script src="storage.js"></script>
+  <script src="export.js"></script>
+  <script src="editor.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
