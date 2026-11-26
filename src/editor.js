@@ -83,13 +83,13 @@ const Editor = (() => {
     }
   }
 
-  const COPY_BTN = `<button class="cb-copy" title="Kopēt">${ICON_COPY}</button>`;
+  const copyBtn = () => `<button class="cb-copy" title="${t('copy')}">${ICON_COPY}</button>`;
   function makeCblock(kind, text = '') {
     const b = document.createElement('div');
     b.className = 'cblock';
     b.dataset.kind = kind;
     b.setAttribute('contenteditable', 'false');
-    b.innerHTML = `${COPY_BTN}<pre contenteditable="true" spellcheck="false"></pre>`;
+    b.innerHTML = `${copyBtn()}<pre contenteditable="true" spellcheck="false"></pre>`;
     b.querySelector('pre').textContent = text;
     return b;
   }
@@ -124,7 +124,7 @@ const Editor = (() => {
     const page = document.createElement('div');
     page.className = 'page';
     page.innerHTML = '<div class="page-inner"><div class="gutter"></div><div class="curline"></div><div class="tblock-hl"></div>' +
-      `<button class="tb-copy" title="Kopēt šo teksta bloku">${ICON_COPY}</button>` +
+      `<button class="tb-copy" title="${t('copyBlock')}">${ICON_COPY}</button>` +
       '<div class="editor" contenteditable="true" spellcheck="false"></div></div>';
     const gutter = page.querySelector('.gutter');
     const curline = page.querySelector('.curline');
@@ -154,6 +154,7 @@ const Editor = (() => {
         const c = ed.cloneNode(true);
         c.querySelectorAll('.arming').forEach(x => x.classList.remove('arming'));
         c.querySelectorAll('.cb-copy.ok').forEach(x => { x.classList.remove('ok'); x.innerHTML = ICON_COPY; });
+        c.querySelectorAll('[data-copied][title]').forEach(x => x.removeAttribute('title'));
         return c.innerHTML;
       },
       focus() { ed.focus({ preventScroll: true }); },
@@ -179,7 +180,7 @@ const Editor = (() => {
       ed.querySelectorAll('.cblock').forEach(b => {
         b.setAttribute('contenteditable', 'false');
         b.querySelectorAll(':scope > .cblock-head, :scope > .cb-copy').forEach(x => x.remove());
-        b.insertAdjacentHTML('afterbegin', COPY_BTN);
+        b.insertAdjacentHTML('afterbegin', copyBtn());
         let pre = b.querySelector('pre');
         if (!pre) { pre = document.createElement('pre'); b.appendChild(pre); }
         pre.setAttribute('contenteditable', 'true');
@@ -519,7 +520,19 @@ const Editor = (() => {
       const text = Exporter.nodesToText(tbGroup).replace(/\s+$/, '');
       copyText(text);
       flashOk(tbCopy);
+      markCopied(tbGroup);
+    });
+
+    /* ---------- kopētā teksta atzīmes (vāji zaļš fons, pele virsū – kad kopēts) ---------- */
+    function markCopied(els) {
+      const ts = String(Date.now());
+      els.filter(Boolean).forEach(el => el.setAttribute('data-copied', ts));
       opts.onCopied();
+      changed();
+    }
+    ed.addEventListener('mouseover', e => {
+      const el = e.target.closest && e.target.closest('[data-copied]');
+      if (el && ed.contains(el)) el.title = t('copiedAgo', I18n.ago(+el.dataset.copied));
     });
 
     /* ---------- notikumi ---------- */
@@ -547,7 +560,7 @@ const Editor = (() => {
         const pre = btn.closest('.cblock').querySelector('pre');
         copyText(pre.innerText.replace(/\n$/, ''));
         flashOk(btn);
-        opts.onCopied();
+        markCopied([btn.closest('.cblock')]);
         return;
       }
       if (btn && btn.classList.contains('cb-del')) {
@@ -571,11 +584,27 @@ const Editor = (() => {
       const s = sel();
       if (!s.rangeCount || s.isCollapsed) return;
       const r = s.getRangeAt(0);
-      opts.onCopied();
-      if (closest(r.commonAncestorContainer, 'pre', ed)) return; // kods – tikai teksts (pārlūks pats)
+      const inPre = closest(r.commonAncestorContainer, 'pre', ed);
+      if (!cut) {
+        // atzīmējam nokopēto: koda bloku / saraksta punktus / rindas
+        const marks = [];
+        if (inPre) marks.push(inPre.closest('.cblock'));
+        else [...ed.children].forEach(ch => {
+          if (!r.intersectsNode(ch)) return;
+          if (ch.matches('ul,ol')) ch.querySelectorAll('li').forEach(li => {
+            // tikai punkta paša teksts (ne iekšējais saraksts)
+            const own = [...li.childNodes].filter(n => !(n.nodeType === 1 && n.matches('ul,ol')));
+            if (own.some(n => r.intersectsNode(n))) marks.push(li);
+          });
+          else if (!(ch.matches('div,p') && !ch.textContent.trim() && !ch.querySelector('img'))) marks.push(ch);
+        });
+        markCopied(marks);
+      } else opts.onCopied();
+      if (inPre) return; // kods – tikai teksts (pārlūks pats)
       const div = document.createElement('div');
       div.appendChild(r.cloneContents());
       div.querySelectorAll('.arming').forEach(x => x.classList.remove('arming'));
+      div.querySelectorAll('[data-copied]').forEach(x => { x.removeAttribute('data-copied'); x.removeAttribute('title'); });
       e.clipboardData.setData('text/html', MARK + div.innerHTML);
       e.clipboardData.setData('text/plain', s.toString());
       e.preventDefault();
@@ -720,6 +749,10 @@ const Editor = (() => {
       },
       insertCblock,
       insertImageFile,
+      clearCopied() {
+        ed.querySelectorAll('[data-copied]').forEach(x => { x.removeAttribute('data-copied'); x.removeAttribute('title'); });
+        changed();
+      },
       list(kind) {
         const li = currentLi();
         const list = li && li.parentNode;

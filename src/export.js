@@ -10,14 +10,14 @@ const Exporter = (() => {
 
   function imgRef(wrapEl, ctx) {
     const img = wrapEl.tagName === 'IMG' ? wrapEl : wrapEl.querySelector('img');
-    if (!img || !ctx || !ctx.images) return ctx && ctx.md ? '' : '[attēls]';
+    if (!img || !ctx || !ctx.images) return ctx && ctx.md ? '' : '[' + t('image1') + ']';
     const m = (img.getAttribute('src') || '').match(/^data:image\/([a-z+]+);base64,(.*)$/i);
     if (!m) return '';
     const ext = m[1].toLowerCase().replace('jpeg', 'jpg').replace('svg+xml', 'svg');
     const name = `${ctx.images.length + 1}.${ext}`;
     ctx.images.push({ name, data: m[2] });
     const path = `{{IMGDIR}}/${name}`;
-    return ctx.md ? `![${name}](<${path}>)` : `[Attēls: ${path}]`;
+    return ctx.md ? `![${name}](<${path}>)` : `[${t('image1')}: ${path}]`;
   }
 
   function inline(node, ctx) {

@@ -12,10 +12,10 @@
   <header class="titlebar" data-tauri-drag-region>
     <div class="tb-left" data-tauri-drag-region>
       <img src="logo.svg" alt="" class="app-logo" data-tauri-drag-region draggable="false" />
-      <button class="icon-btn nb-only" id="backBtn" title="Uz sākumu (Alt+←)">
+      <button class="icon-btn nb-only" id="backBtn" data-i18n-title="back">
         <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <div class="nb-title nb-only" id="nbTitle" title="Klikšķini, lai pārsauktu"></div>
+      <div class="nb-title nb-only" id="nbTitle" data-i18n-title="renameHint"></div>
       <div class="tb-fill" data-tauri-drag-region></div>
     </div>
     <div class="tb-center" data-tauri-drag-region>
@@ -23,25 +23,26 @@
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="search" type="search" placeholder="Meklēt piezīmēs…" autocomplete="off" spellcheck="false" />
         <span class="fcount nb-only" id="fCount"></span>
-        <button class="nb-only f-nav" id="fPrev" title="Iepriekšējais (Shift+Enter)"><svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
-        <button class="nb-only f-nav" id="fNext" title="Nākamais (Enter)"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="nb-only f-nav" id="fPrev" data-i18n-title="findPrev"><svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
+        <button class="nb-only f-nav" id="fNext" data-i18n-title="findNext"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
       </div>
     </div>
     <div class="tb-right" data-tauri-drag-region>
       <div class="tb-fill" data-tauri-drag-region></div>
-      <button class="icon-btn nb-only" id="exportBtn" title="Eksportēt (.md / .txt)">
+      <button class="icon-btn nb-only" id="exportBtn" data-i18n-title="export">
         <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
       </button>
-      <button class="icon-btn" id="themeBtn" title="Gaišs / tumšs režīms">
+      <button class="lang-btn" id="langBtn" data-i18n-title="language">LV</button>
+      <button class="icon-btn" id="themeBtn" data-i18n-title="theme">
         <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       </button>
-      <button class="icon-btn home-only" id="newNotebookBtn" title="Jauna piezīme (Ctrl+N)">
+      <button class="icon-btn home-only" id="newNotebookBtn" data-i18n-title="newNote">
         <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
       <div class="winctl">
-        <button id="wMin" title="Minimizēt"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button>
-        <button id="wMax" title="Maksimizēt"><svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg></button>
-        <button id="wClose" class="close" title="Aizvērt"><svg viewBox="0 0 12 12"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
+        <button id="wMin" data-i18n-title="minimize"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button>
+        <button id="wMax" data-i18n-title="maximize"><svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg></button>
+        <button id="wClose" class="close" data-i18n-title="close"><svg viewBox="0 0 12 12"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
       </div>
     </div>
   </header>
@@ -51,18 +52,19 @@
     <div class="home-sub">
       <div class="count" id="countLbl"></div>
       <div class="home-ctl">
-        <label>Kārtot
+        <button class="add-cat" id="addCatBtn" data-i18n-title="addCategoryTitle"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="addCategory"></span></button>
+        <label><span data-i18n="sort"></span>
           <select id="sortSel">
-            <option value="updated">pēc izmaiņām</option>
-            <option value="title">pēc nosaukuma</option>
-            <option value="created">pēc izveides</option>
+            <option value="updated" data-i18n="sortUpdated"></option>
+            <option value="title" data-i18n="sortTitle"></option>
+            <option value="created" data-i18n="sortCreated"></option>
           </select>
         </label>
-        <div class="seg" id="viewSeg" title="Skats (arī Ctrl + peles ritulis)">
-          <button data-v="list" title="Saraksts"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
-          <button data-v="small" title="Mazas kartiņas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="10" y="3" width="5" height="5" rx="1"/><rect x="17" y="3" width="4" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/><rect x="17" y="10" width="4" height="5" rx="1"/></svg></button>
-          <button data-v="medium" title="Vidējas kartiņas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></button>
-          <button data-v="large" title="Lielas kartiņas"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="11" rx="1.5"/><path d="M3 18h18M3 21h12"/></svg></button>
+        <div class="seg" id="viewSeg" data-i18n-title="view">
+          <button data-v="list" data-i18n-title="viewList"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+          <button data-v="small" data-i18n-title="viewSmall"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="10" y="3" width="5" height="5" rx="1"/><rect x="17" y="3" width="4" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/><rect x="17" y="10" width="4" height="5" rx="1"/></svg></button>
+          <button data-v="medium" data-i18n-title="viewMedium"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></button>
+          <button data-v="large" data-i18n-title="viewLarge"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="11" rx="1.5"/><path d="M3 18h18M3 21h12"/></svg></button>
         </div>
       </div>
     </div>
@@ -72,73 +74,73 @@
   <!-- ============ PIEZĪMES SKATS ============ -->
   <section id="notebook" class="view hidden">
     <div class="toolbar" id="toolbar">
-      <select id="blockSel" title="Rindas stils">
-        <option value="div">Teksts</option>
-        <option value="h1">Virsraksts 1</option>
-        <option value="h2">Virsraksts 2</option>
-        <option value="h3">Virsraksts 3</option>
+      <select id="blockSel" data-i18n-title="blockStyle">
+        <option value="div" data-i18n="text"></option>
+        <option value="h1" data-i18n="h1"></option>
+        <option value="h2" data-i18n="h2"></option>
+        <option value="h3" data-i18n="h3"></option>
       </select>
       <span class="sep"></span>
-      <button data-cmd="bold" title="Treknraksts (Ctrl+B)"><b>B</b></button>
-      <button data-cmd="italic" title="Slīpraksts (Ctrl+I)"><i>I</i></button>
-      <button data-cmd="underline" title="Pasvītrots (Ctrl+U)"><u>U</u></button>
-      <button data-cmd="strikeThrough" title="Pārsvītrots (Ctrl+Shift+X)"><s>S</s></button>
+      <button data-cmd="bold" data-i18n-title="bold"><b>B</b></button>
+      <button data-cmd="italic" data-i18n-title="italic"><i>I</i></button>
+      <button data-cmd="underline" data-i18n-title="underline"><u>U</u></button>
+      <button data-cmd="strikeThrough" data-i18n-title="strike"><s>S</s></button>
       <span class="sep"></span>
       <div class="dd">
-        <button data-dd="fore" title="Teksta krāsa" class="color-btn">
+        <button data-dd="fore" data-i18n-title="foreColor" class="color-btn">
           <span class="a-letter">A</span><span class="swatch" id="foreSwatch"></span>
         </button>
         <div class="dd-menu palette" id="forePal"></div>
       </div>
       <div class="dd">
-        <button data-dd="back" title="Iekrāsot fonu (Ctrl+Shift+H)" class="color-btn">
+        <button data-dd="back" data-i18n-title="backColor" class="color-btn">
           <svg viewBox="0 0 24 24"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
           <span class="swatch" id="backSwatch"></span>
         </button>
         <div class="dd-menu palette" id="backPal"></div>
       </div>
-      <button data-cmd="removeFormat" title="Notīrīt formatējumu">
+      <button data-cmd="removeFormat" data-i18n-title="clearFormat">
         <svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/><path d="m3 3 18 18"/></svg>
       </button>
       <span class="sep"></span>
-      <button data-act="ul" title="Punkti  (rindas sākumā: “- ”)">
+      <button data-act="ul" data-i18n-title="ul">
         <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1.2" class="fill"/><circle cx="4" cy="12" r="1.2" class="fill"/><circle cx="4" cy="18" r="1.2" class="fill"/></svg>
       </button>
-      <button data-act="ol" title="Numurēts saraksts  (rindas sākumā: “1. ”)">
+      <button data-act="ol" data-i18n-title="ol">
         <svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><text x="1.5" y="8.5" class="t">1</text><text x="1.5" y="14.5" class="t">2</text><text x="1.5" y="20.5" class="t">3</text></svg>
       </button>
-      <button data-act="ola" title="Saraksts ar burtiem  (rindas sākumā: “a. ”)">
+      <button data-act="ola" data-i18n-title="ola">
         <svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><text x="1.5" y="8.5" class="t">a</text><text x="1.5" y="14.5" class="t">b</text><text x="1.5" y="20.5" class="t">c</text></svg>
       </button>
-      <button data-act="check" title="Uzdevumu saraksts  (rindas sākumā: “[] ”)">
+      <button data-act="check" data-i18n-title="check">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="6" height="6" rx="1"/><path d="m4.5 7 1.2 1.2L8 5.8"/><rect x="3" y="14" width="6" height="6" rx="1"/><path d="M12 7h9M12 17h9"/></svg>
       </button>
       <span class="sep"></span>
-      <button data-act="inlinecode" title="Kods rindā (Ctrl+E)">
+      <button data-act="inlinecode" data-i18n-title="inlineCode">
         <svg viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>
       </button>
-      <button data-act="code" title="Koda bloks (Ctrl+Shift+K vai “``` ”)">
+      <button data-act="code" data-i18n-title="codeBlock">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m9 10-2 2 2 2M15 10l2 2-2 2"/></svg>
       </button>
-      <button data-act="cmd" title="Komandas bloks (Ctrl+Shift+M vai “$$ ”)">
+      <button data-act="cmd" data-i18n-title="cmdBlock">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 10 3 2-3 2M12 15h5"/></svg>
       </button>
       <span class="sep"></span>
-      <button data-act="image" title="Ievietot attēlu (vai ielīmē / ievelc)">
+      <button data-act="image" data-i18n-title="image">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/></svg>
       </button>
-      <button data-act="hr" title="Atdalītājlīnija">
+      <button data-act="hr" data-i18n-title="hr">
         <svg viewBox="0 0 24 24"><path d="M3 12h18"/></svg>
       </button>
       <div class="toolbar-right">
-        <span class="zoom-lbl" id="zoomLbl" title="Teksta izmērs (Ctrl + peles ritulis, Ctrl+0 – atiestatīt)"></span>
-        <button data-act="font" title="Pamatteksta fonts: parasts / monospace" class="txt" id="fontBtn">Aa</button>
+        <span class="zoom-lbl" id="zoomLbl" data-i18n-title="zoom"></span>
+        <button data-act="font" data-i18n-title="font" class="txt" id="fontBtn">Aa</button>
       </div>
     </div>
 
     <div class="tabbar">
       <div class="tabs" id="tabs"></div>
-      <button class="tab-add" id="addTabBtn" title="Jauna cilne (Ctrl+T)">
+      <button class="tab-add" id="addTabBtn" data-i18n-title="newTab">
         <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
     </div>
@@ -150,7 +152,7 @@
       <span id="stWords"></span>
       <span id="stChars"></span>
       <span class="grow"></span>
-      <span id="stSaved" class="saved">Saglabāts</span>
+      <span id="stSaved" class="saved"></span>
     </footer>
   </section>
 
@@ -161,8 +163,8 @@
       <h3 id="modalTitle"></h3>
       <div id="modalBody"></div>
       <div class="modal-actions">
-        <button class="btn" id="modalCancel">Atcelt</button>
-        <button class="btn primary" id="modalOk">Labi</button>
+        <button class="btn" id="modalCancel" data-i18n="cancel"></button>
+        <button class="btn primary" id="modalOk" data-i18n="ok"></button>
       </div>
     </div>
   </div>
@@ -170,6 +172,7 @@
   <input type="file" id="fileImg" accept="image/*" hidden />
   <input type="file" id="fileLogo" accept="image/*" hidden />
 
+  <script src="i18n.js"></script>
   <script src="storage.js"></script>
   <script src="export.js"></script>
   <script src="editor.js"></script>

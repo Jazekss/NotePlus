@@ -1,4 +1,4 @@
-/* Note+ – augšējā josla, sākuma ekrāns (kartiņas), piezīmes skats, cilnes, rīkjosla, eksports */
+/* Note+ – augšējā josla, sākuma ekrāns (kategorijas + kartiņas), piezīmes skats, cilnes, rīkjosla, eksports */
 (() => {
   const $ = id => document.getElementById(id);
   const CARD_COLORS = ['#664496', '#1c7ed6', '#0c8599', '#2f9e44', '#e8590c', '#d63a4a', '#c2255c', '#5f3dc4', '#495057', '#9c6b30'];
@@ -16,13 +16,20 @@
     dots: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" class="fill"/><circle cx="12" cy="12" r="1.6" class="fill"/><circle cx="19" cy="12" r="1.6" class="fill"/></svg>',
     plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
     folder: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+    tabs: '<svg viewBox="0 0 24 24"><path d="M3 20V9a2 2 0 0 1 2-2h4l2-3h8a2 2 0 0 1 2 2v14"/><path d="M3 20h18"/></svg>',
+    clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     md: '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 15V9l2.5 3L11 9v6M15 9v6M13 13l2 2 2-2"/></svg>',
     txt: '<svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/></svg>',
+    arrow: '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    up: '<svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>',
+    down: '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+    eraser: '<svg viewBox="0 0 24 24"><path d="m7 21-4-4L14 6l7 7-8 8z"/><path d="M22 21H7"/></svg>',
     max: '<svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>',
     restore: '<svg viewBox="0 0 12 12"><rect x="2" y="4" width="6" height="6" rx="1"/><path d="M4 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H8"/></svg>'
   };
 
   let notebooks = [];
+  let meta = { categories: [] };
   let current = null;          // atvērtā piezīme
   let editors = new Map();     // tabId -> editor
   let saveTimer = 0;
@@ -48,13 +55,24 @@
     $('zoomLbl').textContent = zoom === 1 ? '' : Math.round(zoom * 100) + '%';
     pref.set('zoom', zoom);
     editors.forEach(e => e.refresh());
-    if (show) toast(`Teksta izmērs: ${Math.round(zoom * 100)}%`);
+    if (show) toast(t('zoomToast', Math.round(zoom * 100)));
   }
   let view = VIEWS.includes(pref.get('view', 'medium')) ? pref.get('view', 'medium') : 'medium';
   function applyView() {
     $('cards').className = 'cards v-' + view;
     document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === view));
     pref.set('view', view);
+  }
+  function applyLang() {
+    I18n.apply();
+    $('langBtn').textContent = I18n.lang.toUpperCase();
+    $('search').placeholder = t(current ? 'searchTab' : 'searchHome');
+    buildPalette('forePal', FORE, 'fore');
+    buildPalette('backPal', BACK, 'back');
+    document.querySelectorAll('.cb-copy').forEach(b => { b.title = t('copy'); });
+    document.querySelectorAll('.tb-copy').forEach(b => { b.title = t('copyBlock'); });
+    if (current) { renderNbHead(); paintUnsaved(); if (Editor.active) showStats(lastStatsFor(Editor.active)); }
+    else renderHome();
   }
   applyTheme();
   applyFont();
@@ -67,6 +85,13 @@
   $('viewSeg').onclick = e => {
     const b = e.target.closest('button');
     if (b) { view = b.dataset.v; applyView(); }
+  };
+  $('langBtn').onclick = () => {
+    const r = $('langBtn').getBoundingClientRect();
+    menu(r.left - 60, r.bottom + 4, Object.entries(I18n.LANGS).map(([code, l]) => ({
+      label: `<b class="lang-code${code === I18n.lang ? ' on' : ''}">${code.toUpperCase()}</b>${l.name}`,
+      action: () => { I18n.setLang(code); applyLang(); }
+    })));
   };
 
   /* ================= loga pogas (logs bez rāmja) ================= */
@@ -85,28 +110,18 @@
 
   /* ================= palīgi ================= */
   function toast(msg) {
-    const t = $('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(t._t);
-    t._t = setTimeout(() => t.classList.remove('show'), 2200);
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 2200);
   }
-  function ago(ts) {
-    if (!ts) return '';
-    const s = (Date.now() - ts) / 1000;
-    if (s < 60) return 'tikko';
-    if (s < 3600) return `pirms ${Math.floor(s / 60)} min`;
-    if (s < 86400) return `pirms ${Math.floor(s / 3600)} h`;
-    if (s < 172800) return 'vakar';
-    if (s < 7 * 86400) return `pirms ${Math.floor(s / 86400)} d`;
-    const d = new Date(ts);
-    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
-  }
-  function plainText(html, limit = 260) {
-    const t = document.createElement('template');
-    t.innerHTML = html || '';
-    t.content.querySelectorAll('.cblock-head, .cb-copy, .hover-ring, img').forEach(x => x.remove());
-    t.content.querySelectorAll('br').forEach(b => b.replaceWith(String.fromCharCode(10)));
+  const esc = s => Editor.esc(String(s ?? ''));
+  function plainText(html, limit = 400) {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html || '';
+    tpl.content.querySelectorAll('.cblock-head, .cb-copy, .hover-ring, img').forEach(x => x.remove());
+    tpl.content.querySelectorAll('br').forEach(b => b.replaceWith(String.fromCharCode(10)));
     const parts = [];
     const walk = el => {
       for (const ch of el.childNodes) {
@@ -117,16 +132,20 @@
         if (parts.join('\n').length > limit) return;
       }
     };
-    walk(t.content);
+    walk(tpl.content);
     return parts.join('\n').slice(0, limit);
   }
-  function nbText(nb) {
-    for (const tab of nb.tabs) { const s = plainText(tab.html); if (s) return s; }
+  /** Īss fragments no pēdējās aktīvās cilnes (ja tukša – no pirmās ar tekstu) */
+  function nbSnippet(nb) {
+    const act = nb.tabs.find(x => x.id === nb.activeTab);
+    const s = act && plainText(act.html);
+    if (s) return s;
+    for (const tb of nb.tabs) { const x = plainText(tb.html); if (x) return x; }
     return '';
   }
   function logoHTML(nb, cls) {
-    if (nb.logo) return `<div class="${cls}"><img src="${nb.logo}" alt=""></div>`;
-    const letter = Editor.esc((nb.title || '?').trim().charAt(0).toUpperCase() || '?');
+    if (nb.logo) return `<div class="${cls} has-img"><img src="${nb.logo}" alt=""></div>`;
+    const letter = esc((nb.title || '?').trim().charAt(0).toUpperCase() || '?');
     return `<div class="${cls}">${letter}</div>`;
   }
   function readLogo(file) {
@@ -136,7 +155,7 @@
         if (file.type === 'image/svg+xml') return res(fr.result);
         const img = new Image();
         img.onload = () => {
-          const S = 160, c = document.createElement('canvas');
+          const S = 200, c = document.createElement('canvas');
           const k = Math.min(1, S / Math.max(img.width, img.height));
           c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
           c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
@@ -155,10 +174,10 @@
       input.click();
     });
   }
-  const safeName = s => (s || 'piezime').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 80) || 'piezime';
+  const safeName = s => (s || 'note').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 80) || 'note';
 
   /* ================= modālis ================= */
-  function modal({ title, body = '', input = null, ok = 'Labi', danger = false, cancel = true }) {
+  function modal({ title, body = '', input = null, ok = t('ok'), danger = false, cancel = true }) {
     return new Promise(res => {
       $('modalTitle').textContent = title;
       $('modalBody').innerHTML = body;
@@ -171,6 +190,7 @@
       }
       const okB = $('modalOk'), cB = $('modalCancel');
       okB.textContent = ok;
+      cB.textContent = t('cancel');
       okB.className = 'btn ' + (danger ? 'danger' : 'primary');
       cB.style.display = cancel ? '' : 'none';
       $('modal').classList.remove('hidden');
@@ -196,6 +216,7 @@
   function menu(x, y, items) {
     ctx.innerHTML = '';
     items.forEach(it => {
+      if (!it) return;
       if (it === '-') { ctx.appendChild(document.createElement('hr')); return; }
       if (it.title) { const d = document.createElement('div'); d.className = 'ctx-label'; d.textContent = it.title; ctx.appendChild(d); return; }
       if (it.colors) {
@@ -220,7 +241,7 @@
     ctx.classList.remove('hidden');
     const r = ctx.getBoundingClientRect();
     ctx.style.left = Math.max(4, Math.min(x, innerWidth - r.width - 8)) + 'px';
-    ctx.style.top = Math.min(y, innerHeight - r.height - 8) + 'px';
+    ctx.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 8)) + 'px';
   }
   function hideMenu() { ctx.classList.add('hidden'); }
   document.addEventListener('mousedown', e => {
@@ -231,93 +252,182 @@
   /* ================= SĀKUMA EKRĀNS ================= */
   async function loadAll() {
     try { notebooks = await Store.list(); }
-    catch (e) { notebooks = []; toast('Neizdevās ielādēt: ' + e); }
-    notebooks.forEach(nb => { if (!nb.tabs || !nb.tabs.length) nb.tabs = [{ id: uid(), title: 'Piezīmes', html: '' }]; });
+    catch (e) { notebooks = []; toast(t('loadFailed', e)); }
+    meta = await Store.loadMeta();
+    if (!Array.isArray(meta.categories)) meta.categories = [];
+    notebooks.forEach(nb => { if (!nb.tabs || !nb.tabs.length) nb.tabs = [{ id: uid(), title: t('defaultTab'), html: '' }]; });
     renderHome();
   }
+  function saveMeta() { Store.saveMeta(meta).catch(e => toast(t('saveFailed', e))); }
+  const catOf = nb => (nb.category && meta.categories.some(c => c.id === nb.category)) ? nb.category : null;
 
+  let dragNb = null;
   function renderHome() {
     const q = current ? '' : $('search').value.trim().toLowerCase();
     const sort = $('sortSel').value;
     let list = notebooks.slice();
     if (q) {
       list = list.filter(nb => (nb.title || '').toLowerCase().includes(q) ||
-        nb.tabs.some(t => (t.title || '').toLowerCase().includes(q) || plainText(t.html, 1e6).toLowerCase().includes(q)));
+        nb.tabs.some(tb => (tb.title || '').toLowerCase().includes(q) || plainText(tb.html, 1e6).toLowerCase().includes(q)));
     }
-    list.sort((a, b) => sort === 'title' ? (a.title || '').localeCompare(b.title || '', 'lv')
+    list.sort((a, b) => sort === 'title' ? (a.title || '').localeCompare(b.title || '', I18n.lang)
       : sort === 'created' ? (b.created || 0) - (a.created || 0)
         : (b.updated || 0) - (a.updated || 0));
 
     const box = $('cards');
+    const scroll = box.scrollTop;
     box.innerHTML = '';
-    if (!q) {
-      const add = document.createElement('div');
-      add.className = 'card new';
-      add.innerHTML = `<div class="plus">${ICON.plus}</div><div>Jauna piezīme</div>`;
-      add.onclick = newNotebook;
-      box.appendChild(add);
-    }
-    list.forEach(nb => box.appendChild(cardEl(nb)));
-    if (q && !list.length) box.innerHTML = `<div class="empty-state">Nekas netika atrasts pēc “${Editor.esc(q)}”</div>`;
-    const n = notebooks.length;
-    $('countLbl').textContent = `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'piezīme' : 'piezīmes'}`;
+    const sections = [{ id: null, name: '' }, ...meta.categories];
+    sections.forEach((cat, i) => {
+      const items = list.filter(nb => catOf(nb) === cat.id);
+      if (q && !items.length) return;
+      const sec = document.createElement('section');
+      sec.className = 'cat';
+      if (cat.id) {
+        const head = document.createElement('div');
+        head.className = 'cat-head';
+        head.innerHTML = `<span class="cat-line"></span><button class="cat-name">${esc(cat.name)}<small>${items.length}</small></button><span class="cat-line"></span>`;
+        const nameBtn = head.querySelector('.cat-name');
+        nameBtn.onclick = () => { const r = nameBtn.getBoundingClientRect(); catMenu(cat, r.left, r.bottom + 4); };
+        head.oncontextmenu = e => { e.preventDefault(); catMenu(cat, e.clientX, e.clientY); };
+        sec.appendChild(head);
+      }
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      if (!cat.id && !q) {
+        const add = document.createElement('div');
+        add.className = 'card new';
+        add.innerHTML = `<div class="plus">${ICON.plus}</div><div>${t('newNoteCard')}</div>`;
+        add.onclick = () => newNotebook(null);
+        grid.appendChild(add);
+      }
+      items.forEach(nb => grid.appendChild(cardEl(nb)));
+      if (cat.id && !items.length) grid.innerHTML = `<div class="drop-hint">${t('dropHere')}</div>`;
+      sec.appendChild(grid);
+      // pārvilkšana uz kategoriju
+      sec.ondragover = e => { if (dragNb) { e.preventDefault(); sec.classList.add('drop'); } };
+      sec.ondragleave = e => { if (!sec.contains(e.relatedTarget)) sec.classList.remove('drop'); };
+      sec.ondrop = e => {
+        e.preventDefault();
+        sec.classList.remove('drop');
+        if (!dragNb) return;
+        const nb = dragNb;
+        dragNb = null;
+        if (catOf(nb) === cat.id) return;
+        nb.category = cat.id;
+        persist(nb);
+        renderHome();
+      };
+      box.appendChild(sec);
+    });
+    if (q && !list.length) box.innerHTML = `<div class="empty-state">${t('noResults', esc(q))}</div>`;
+    box.scrollTop = scroll;
+    $('countLbl').textContent = t('notes', notebooks.length);
   }
 
   function cardEl(nb) {
     const el = document.createElement('div');
     el.className = 'card';
+    el.draggable = true;
     el.style.setProperty('--c', nb.color || CARD_COLORS[0]);
-    const copiedRecently = nb.lastCopied && Date.now() - nb.lastCopied < 24 * 3600e3;
-    if (copiedRecently) el.classList.add('copied');
-    const prev = nbText(nb);
+    const prev = nbSnippet(nb);
+    const n = nb.tabs.length;
+    const tabNames = esc(nb.tabs.map(x => x.title).join(', '));
+    const created = nb.created || nb.updated;
+    const copiedTip = nb.lastCopied ? esc(t('copiedAgo', I18n.ago(nb.lastCopied))) : '';
     el.innerHTML = `
-      <div class="card-top">
+      <div class="card-head">
         ${logoHTML(nb, 'card-logo')}
-        <div class="card-title">${Editor.esc(nb.title || 'Bez nosaukuma')}</div>
-        <button class="icon-btn card-menu" title="Darbības">${ICON.dots}</button>
+        <div class="card-hd">
+          <div class="card-title" title="${esc(nb.title)}">${esc(nb.title || t('untitled'))}</div>
+          <div class="card-meta">
+            <span class="m-tabs" title="${esc(t('tabs', n))}: ${tabNames}">${ICON.tabs}${n}</span>
+            <span class="m-created" title="${esc(t('created', I18n.full(created)))}">${ICON.clock}${esc(I18n.short(created))}</span>
+            ${nb.lastCopied ? `<span class="m-copied" title="${copiedTip}">${ICON.copy}</span>` : ''}
+          </div>
+        </div>
       </div>
-      <div class="card-preview ${prev ? '' : 'empty'}">${prev ? Editor.esc(prev) : 'Tukšs – klikšķini, lai sāktu rakstīt'}</div>
-      <div class="card-foot">
-        <span class="pill tabs-pill" title="${nb.tabs.length} ${nb.tabs.length % 10 === 1 && nb.tabs.length % 100 !== 11 ? 'cilne' : 'cilnes'}: ${Editor.esc(nb.tabs.map(t => t.title).join(', '))}"><svg viewBox="0 0 24 24"><path d="M3 20V8a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v9"/><path d="M3 20h18"/></svg>${nb.tabs.length}</span>
-        ${copiedRecently ? `<span class="pill copied" title="No šīs piezīmes nesen kopēts teksts">Kopēts ${ago(nb.lastCopied)}</span>` : ''}
-        <span class="grow"></span>
-        <span title="Pēdējās izmaiņas">${ago(nb.updated)}</span>
+      <div class="card-preview ${prev ? '' : 'empty'}">${prev ? esc(prev) : esc(t('emptyNote'))}</div>
+      <div class="card-side">
+        ${nb.lastCopied ? `<span class="s-copied" title="${copiedTip}">${ICON.copy}${esc(I18n.ago(nb.lastCopied))}</span>` : ''}
+        <span class="s-created" title="${esc(t('created', I18n.full(created)))}">${esc(I18n.short(created))}</span>
       </div>
-      ${nb._unsaved ? '<span class="dot" title="Nav saglabāts"></span>' : ''}`;
+      <button class="icon-btn card-menu" title="${esc(t('actions'))}">${ICON.dots}</button>
+      ${nb._unsaved ? `<span class="dot" title="${esc(t('unsaved'))}"></span>` : ''}`;
     el.onclick = e => {
       const mb = e.target.closest('.card-menu');
       if (mb) { const r = mb.getBoundingClientRect(); cardMenu(nb, r.left, r.bottom + 4); return; }
       openNotebook(nb);
     };
     el.oncontextmenu = e => { e.preventDefault(); cardMenu(nb, e.clientX, e.clientY); };
+    el.ondragstart = e => { dragNb = nb; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', nb.id); el.classList.add('dragging'); };
+    el.ondragend = () => { dragNb = null; el.classList.remove('dragging'); document.querySelectorAll('.cat.drop').forEach(s => s.classList.remove('drop')); };
     return el;
   }
 
   function cardMenu(nb, x, y) {
+    const cur = catOf(nb);
+    const moves = meta.categories.length ? [
+      '-', { title: t('moveTo') },
+      ...[{ id: null, name: t('uncategorized') }, ...meta.categories].filter(c => c.id !== cur).map(c => ({
+        label: esc(c.name), icon: ICON.arrow, action: () => { nb.category = c.id; persist(nb); renderHome(); }
+      }))
+    ] : [];
     menu(x, y, [
-      { label: 'Atvērt', icon: ICON.open, action: () => openNotebook(nb) },
-      { label: 'Pārsaukt', icon: ICON.edit, action: () => renameNotebook(nb) },
-      { label: 'Mainīt logotipu…', icon: ICON.img, action: () => changeLogo(nb) },
-      ...(nb.logo ? [{ label: 'Noņemt logotipu', icon: ICON.x, action: () => { nb.logo = null; persist(nb); renderHome(); } }] : []),
+      { label: t('open'), icon: ICON.open, action: () => openNotebook(nb) },
+      { label: t('rename'), icon: ICON.edit, action: () => renameNotebook(nb) },
+      { label: t('changeLogo'), icon: ICON.img, action: () => changeLogo(nb) },
+      nb.logo ? { label: t('removeLogo'), icon: ICON.x, action: () => { nb.logo = null; persist(nb); renderHome(); } } : null,
       { colors: CARD_COLORS, current: nb.color, pick: c => { nb.color = c; persist(nb); renderHome(); } },
+      ...moves,
       '-',
-      { label: 'Eksportēt .md', icon: ICON.md, action: () => exportNote(nb, 'all', 'md') },
-      { label: 'Eksportēt .txt', icon: ICON.txt, action: () => exportNote(nb, 'all', 'txt') },
-      { label: 'Dublēt', icon: ICON.copy, action: () => duplicateNotebook(nb) },
-      { label: 'Datu mape', icon: ICON.folder, action: async () => modal({ title: 'Dati glabājas šeit', body: `<p style="user-select:all;word-break:break-all">${Editor.esc(await Store.dataDir())}</p>`, cancel: false }) },
+      { label: t('exportMd'), icon: ICON.md, action: () => exportNote(nb, 'all', 'md') },
+      { label: t('exportTxt'), icon: ICON.txt, action: () => exportNote(nb, 'all', 'txt') },
+      { label: t('duplicate'), icon: ICON.copy, action: () => duplicateNotebook(nb) },
+      { label: t('dataFolder'), icon: ICON.folder, action: async () => modal({ title: t('dataHere'), body: `<p style="user-select:all;word-break:break-all">${esc(await Store.dataDir())}</p>`, cancel: false }) },
       '-',
-      { label: 'Dzēst', icon: ICON.trash, danger: true, action: () => deleteNotebook(nb) }
+      { label: t('delete'), icon: ICON.trash, danger: true, action: () => deleteNotebook(nb) }
     ]);
   }
 
-  async function newNotebook() {
-    const title = await modal({ title: 'Jauna piezīme', body: '<p style="margin-bottom:10px">Projekta / piezīmes nosaukums:</p>', input: '', ok: 'Izveidot' });
+  /* --- kategorijas --- */
+  async function addCategory() {
+    const name = await modal({ title: t('addCategoryTitle'), body: `<p style="margin-bottom:10px">${t('categoryName')}</p>`, input: '', ok: t('create') });
+    if (!name) return;
+    meta.categories.push({ id: uid(), name });
+    saveMeta();
+    renderHome();
+  }
+  function catMenu(cat, x, y) {
+    const i = meta.categories.indexOf(cat);
+    menu(x, y, [
+      { label: t('rename'), icon: ICON.edit, action: async () => {
+        const name = await modal({ title: t('renameCategory'), input: cat.name, ok: t('save') });
+        if (name) { cat.name = name; saveMeta(); renderHome(); }
+      } },
+      i > 0 ? { label: t('moveUp'), icon: ICON.up, action: () => { meta.categories.splice(i, 1); meta.categories.splice(i - 1, 0, cat); saveMeta(); renderHome(); } } : null,
+      i < meta.categories.length - 1 ? { label: t('moveDown'), icon: ICON.down, action: () => { meta.categories.splice(i, 1); meta.categories.splice(i + 1, 0, cat); saveMeta(); renderHome(); } } : null,
+      '-',
+      { label: t('deleteCategory'), icon: ICON.trash, danger: true, action: async () => {
+        const ok = await modal({ title: t('deleteCategoryQ'), body: `<p>${t('deleteCategoryBody', esc(cat.name))}</p>`, ok: t('delete'), danger: true });
+        if (!ok) return;
+        meta.categories = meta.categories.filter(c => c !== cat);
+        notebooks.filter(nb => nb.category === cat.id).forEach(nb => { nb.category = null; persist(nb); });
+        saveMeta();
+        renderHome();
+      } }
+    ]);
+  }
+  $('addCatBtn').onclick = addCategory;
+
+  async function newNotebook(category) {
+    const title = await modal({ title: t('newNoteTitle'), body: `<p style="margin-bottom:10px">${t('newNotePrompt')}</p>`, input: '', ok: t('create') });
     if (!title) return;
     if (current) await closeNotebook(true);
     const nb = {
       id: uid(), title, color: CARD_COLORS[notebooks.length % CARD_COLORS.length], logo: null,
-      created: Date.now(), updated: Date.now(), lastCopied: 0,
-      tabs: [{ id: uid(), title: 'Piezīmes', html: '' }]
+      created: Date.now(), updated: Date.now(), lastCopied: 0, category: category || null,
+      tabs: [{ id: uid(), title: t('defaultTab'), html: '' }]
     };
     nb.activeTab = nb.tabs[0].id;
     notebooks.push(nb);
@@ -325,9 +435,9 @@
     openNotebook(nb);
   }
   async function renameNotebook(nb) {
-    const t = await modal({ title: 'Pārsaukt piezīmi', input: nb.title, ok: 'Saglabāt' });
-    if (!t) return;
-    nb.title = t;
+    const title = await modal({ title: t('renameNote'), input: nb.title, ok: t('save') });
+    if (!title) return;
+    nb.title = title;
     nb.updated = Date.now();
     await persist(nb);
     if (current === nb) renderNbHead(); else renderHome();
@@ -340,18 +450,18 @@
     if (current === nb) renderNbHead(); else renderHome();
   }
   async function duplicateNotebook(nb) {
-    const copy = JSON.parse(JSON.stringify(nb));
+    const copy = JSON.parse(JSON.stringify(cleanCopy(nb)));
     copy.id = uid();
-    copy.title = nb.title + ' (kopija)';
+    copy.title = nb.title + t('copySuffix');
     copy.created = copy.updated = Date.now();
-    copy.tabs.forEach(t => t.id = uid());
+    copy.tabs.forEach(tb => tb.id = uid());
     copy.activeTab = copy.tabs[0].id;
     notebooks.push(copy);
     await persist(copy);
     renderHome();
   }
   async function deleteNotebook(nb) {
-    const ok = await modal({ title: 'Dzēst piezīmi?', body: `<p>“${Editor.esc(nb.title)}” tiks pārvietota uz atkritni (mape <b>_trash</b> datu mapē).</p>`, ok: 'Dzēst', danger: true });
+    const ok = await modal({ title: t('deleteNote'), body: `<p>${t('deleteNoteBody', esc(nb.title))}</p>`, ok: t('delete'), danger: true });
     if (!ok) return;
     await Store.remove(nb.id);
     notebooks = notebooks.filter(n => n !== nb);
@@ -360,15 +470,15 @@
   function cleanCopy(nb) {
     const data = {};
     Object.keys(nb).forEach(k => { if (!k.startsWith('_')) data[k] = nb[k]; });
-    data.tabs = nb.tabs.map(({ id, title, html }) => ({ id, title, html }));
+    data.tabs = nb.tabs.map(({ id, title, html, lastCopied }) => ({ id, title, html, lastCopied: lastCopied || 0 }));
     return data;
   }
   async function persist(nb) {
     try { await Store.save(cleanCopy(nb)); }
-    catch (e) { toast('Neizdevās saglabāt: ' + e); }
+    catch (e) { toast(t('saveFailed', e)); }
   }
 
-  $('newNotebookBtn').onclick = newNotebook;
+  $('newNotebookBtn').onclick = () => newNotebook(null);
   $('sortSel').value = pref.get('sort', 'updated');
   $('sortSel').onchange = () => { pref.set('sort', $('sortSel').value); renderHome(); };
 
@@ -376,14 +486,14 @@
   function setMode(nb) {
     document.body.className = nb ? 'mode-nb' : 'mode-home';
     $('search').value = '';
-    $('search').placeholder = nb ? 'Meklēt šajā cilnē…  (Ctrl+F)' : 'Meklēt piezīmēs…  (Ctrl+F)';
+    $('search').placeholder = t(nb ? 'searchTab' : 'searchHome');
     $('fCount').textContent = '';
     clearFind();
   }
 
   function openNotebook(nb) {
     current = nb;
-    if (!nb.tabs.find(t => t.id === nb.activeTab)) nb.activeTab = nb.tabs[0].id;
+    if (!nb.tabs.find(x => x.id === nb.activeTab)) nb.activeTab = nb.tabs[0].id;
     $('home').classList.add('hidden');
     $('notebook').classList.remove('hidden');
     setMode(nb);
@@ -410,15 +520,15 @@
 
   function renderNbHead() {
     const nb = current;
-    const t = $('nbTitle');
-    t.style.setProperty('--c', nb.color || CARD_COLORS[0]);
-    t.innerHTML = logoHTML(nb, 'mini-logo') + `<span>${Editor.esc(nb.title)}</span>`;
-    t.onclick = () => renameNotebook(nb);
-    t.oncontextmenu = e => {
+    const head = $('nbTitle');
+    head.style.setProperty('--c', nb.color || CARD_COLORS[0]);
+    head.innerHTML = logoHTML(nb, 'mini-logo') + `<span>${esc(nb.title)}</span>`;
+    head.onclick = () => renameNotebook(nb);
+    head.oncontextmenu = e => {
       e.preventDefault();
       menu(e.clientX, e.clientY, [
-        { label: 'Pārsaukt', icon: ICON.edit, action: () => renameNotebook(nb) },
-        { label: 'Mainīt logotipu…', icon: ICON.img, action: () => changeLogo(nb) },
+        { label: t('rename'), icon: ICON.edit, action: () => renameNotebook(nb) },
+        { label: t('changeLogo'), icon: ICON.img, action: () => changeLogo(nb) },
         { colors: CARD_COLORS, current: nb.color, pick: c => { nb.color = c; persist(nb); renderNbHead(); } }
       ]);
     };
@@ -434,8 +544,9 @@
       el.className = 'tab' + (tab.id === current.activeTab ? ' active' : '') + (tab._unsaved ? ' unsaved' : '');
       el.dataset.id = tab.id;
       el.draggable = true;
-      el.innerHTML = `<span class="tab-name">${Editor.esc(tab.title || 'Cilne')}</span><button class="tab-x" title="Aizvērt (dzēst) cilni"><span class="dot"></span>${ICON.x}</button>`;
-      el.title = 'Dubultklikšķis – pārsaukt';
+      el.innerHTML = (tab.lastCopied ? `<span class="tab-copied" title="${esc(t('copiedAgo', I18n.ago(tab.lastCopied)))}">${ICON.copy}</span>` : '') +
+        `<span class="tab-name">${esc(tab.title || 'Tab')}</span><button class="tab-x" title="${esc(t('closeTab'))}"><span class="dot"></span>${ICON.x}</button>`;
+      el.title = t('tabRenameHint');
       el.onclick = e => {
         if (e.target.closest('.tab-x')) { deleteTab(tab); return; }
         if (tab.id !== current.activeTab) switchTab(tab.id);
@@ -444,13 +555,15 @@
       el.onauxclick = e => { if (e.button === 1) deleteTab(tab); };
       el.oncontextmenu = e => {
         e.preventDefault();
+        const ed = editors.get(tab.id);
         menu(e.clientX, e.clientY, [
-          { label: 'Pārsaukt', icon: ICON.edit, action: () => renameTabInline(el, tab) },
-          { label: 'Dublēt cilni', icon: ICON.copy, action: () => duplicateTab(tab) },
-          { label: 'Eksportēt cilni .md', icon: ICON.md, action: () => exportNote(current, tab, 'md') },
-          { label: 'Eksportēt cilni .txt', icon: ICON.txt, action: () => exportNote(current, tab, 'txt') },
+          { label: t('rename'), icon: ICON.edit, action: () => renameTabInline(el, tab) },
+          { label: t('duplicateTab'), icon: ICON.copy, action: () => duplicateTab(tab) },
+          { label: t('exportTabMd'), icon: ICON.md, action: () => exportNote(current, tab, 'md') },
+          { label: t('exportTabTxt'), icon: ICON.txt, action: () => exportNote(current, tab, 'txt') },
+          ed ? { label: t('clearCopied'), icon: ICON.eraser, action: () => { ed.api.clearCopied(); tab.lastCopied = 0; renderTabs(); } } : null,
           '-',
-          { label: 'Dzēst cilni', icon: ICON.trash, danger: true, action: () => deleteTab(tab) }
+          { label: t('deleteTab'), icon: ICON.trash, danger: true, action: () => deleteTab(tab) }
         ]);
       };
       el.ondragstart = e => { dragTab = tab; e.dataTransfer.effectAllowed = 'move'; };
@@ -476,12 +589,12 @@
   function paintUnsaved() {
     if (!current) return;
     document.querySelectorAll('#tabs .tab').forEach(el => {
-      const t = current.tabs.find(x => x.id === el.dataset.id);
-      el.classList.toggle('unsaved', !!(t && t._unsaved));
+      const tb = current.tabs.find(x => x.id === el.dataset.id);
+      el.classList.toggle('unsaved', !!(tb && tb._unsaved));
     });
     const st = $('stSaved');
     st.classList.toggle('dirty', !!current._unsaved);
-    st.innerHTML = current._unsaved ? '<span class="dot"></span>Saglabā…' : 'Saglabāts';
+    st.innerHTML = current._unsaved ? `<span class="dot"></span>${esc(t('saving'))}` : esc(t('saved'));
   }
 
   function renameTabInline(el, tab) {
@@ -510,7 +623,7 @@
   }
 
   function addTab() {
-    const tab = { id: uid(), title: `Cilne ${current.tabs.length + 1}`, html: '' };
+    const tab = { id: uid(), title: t('tabN', current.tabs.length + 1), html: '' };
     current.tabs.push(tab);
     switchTab(tab.id);
     scheduleSave();
@@ -521,7 +634,7 @@
 
   function duplicateTab(tab) {
     syncTab(tab);
-    const copy = { id: uid(), title: tab.title + ' (kopija)', html: tab.html };
+    const copy = { id: uid(), title: tab.title + t('copySuffix'), html: tab.html };
     current.tabs.splice(current.tabs.indexOf(tab) + 1, 0, copy);
     switchTab(copy.id);
     scheduleSave();
@@ -530,14 +643,14 @@
   async function deleteTab(tab) {
     syncTab(tab);
     if (plainText(tab.html) || /<img/.test(tab.html)) {
-      const ok = await modal({ title: 'Dzēst cilni?', body: `<p>Cilne “${Editor.esc(tab.title)}” un tās saturs tiks dzēsts.</p>`, ok: 'Dzēst', danger: true });
+      const ok = await modal({ title: t('deleteTabQ'), body: `<p>${t('deleteTabBody', esc(tab.title))}</p>`, ok: t('delete'), danger: true });
       if (!ok) return;
     }
     const i = current.tabs.indexOf(tab);
     current.tabs.splice(i, 1);
     const ed = editors.get(tab.id);
     if (ed) { ed.destroy(); ed.page.remove(); editors.delete(tab.id); }
-    if (!current.tabs.length) current.tabs.push({ id: uid(), title: 'Piezīmes', html: '' });
+    if (!current.tabs.length) current.tabs.push({ id: uid(), title: t('defaultTab'), html: '' });
     if (current.activeTab === tab.id) switchTab(current.tabs[Math.max(0, i - 1)].id);
     else renderTabs();
     scheduleSave();
@@ -549,7 +662,11 @@
     const nb = current;
     ed = Editor.create(tab.html, {
       onChange: () => { tab._dirty = true; tab._unsaved = true; scheduleSave(); },
-      onCopied: () => { nb.lastCopied = Date.now(); scheduleSave(true); },
+      onCopied: () => {
+        nb.lastCopied = tab.lastCopied = Date.now();
+        if (current === nb) renderTabs();
+        scheduleSave(true);
+      },
       onStats: s => { if (current && current.activeTab === tab.id) showStats(s); }
     });
     editors.set(tab.id, ed);
@@ -558,7 +675,7 @@
   }
 
   function switchTab(id) {
-    const tab = current.tabs.find(t => t.id === id);
+    const tab = current.tabs.find(x => x.id === id);
     if (!tab) return;
     if (current.activeTab !== id) { current.activeTab = id; scheduleSave(true); }
     const ed = editorFor(tab);
@@ -589,26 +706,26 @@
     const nb = current;
     if (!nb) return Promise.resolve();
     let content = false;
-    nb.tabs.forEach(t => { if (t._dirty) content = true; syncTab(t); });
+    nb.tabs.forEach(tb => { if (tb._dirty) content = true; syncTab(tb); });
     if (content) nb.updated = Date.now();
     const rev = nb._rev;
     return Store.save(cleanCopy(nb)).then(() => {
       if (nb._rev === rev) {
         nb._unsaved = false;
-        nb.tabs.forEach(t => { t._unsaved = false; });
+        nb.tabs.forEach(tb => { tb._unsaved = false; });
       }
       if (current === nb) paintUnsaved();
     }).catch(e => {
       nb._unsaved = true;
-      toast('Neizdevās saglabāt: ' + e);
+      toast(t('saveFailed', e));
     });
   }
   window.addEventListener('beforeunload', () => { flushSave(); });
 
   function showStats(s) {
-    $('stLines').textContent = `Rinda ${s.cur > 0 ? s.cur : '–'} / ${s.lines}`;
-    $('stWords').textContent = `${s.words} vārdi`;
-    $('stChars').textContent = `${s.chars} rakstzīmes`;
+    $('stLines').textContent = t('line', s.cur > 0 ? s.cur : '–', s.lines);
+    $('stWords').textContent = t('words', s.words);
+    $('stChars').textContent = t('chars', s.chars);
   }
 
   /* ================= eksports ================= */
@@ -624,28 +741,28 @@
       name = nb.title;
       const multi = nb.tabs.length > 1;
       content = md ? `# ${nb.title}\n\n` : `${nb.title}\n${'='.repeat(Math.min(60, nb.title.length))}\n\n`;
-      nb.tabs.forEach(t => {
-        if (multi) content += md ? `## ${t.title}\n\n` : `--- ${t.title} ---\n\n`;
-        content += Exporter.convert(t.html, md, ctxE).text.trim() + '\n\n';
+      nb.tabs.forEach(tb => {
+        if (multi) content += md ? `## ${tb.title}\n\n` : `--- ${tb.title} ---\n\n`;
+        content += Exporter.convert(tb.html, md, ctxE).text.trim() + '\n\n';
       });
     }
     content = content.replace(/\s+$/, '') + '\n';
     try {
-      const path = await Store.exportFile(`${safeName(name)}.${ext}`, ext, content, ctxE.images);
-      if (path) toast(`Eksportēts: ${path}` + (ctxE.images.length ? ` (+${ctxE.images.length} attēli)` : ''));
-    } catch (e) { toast('Eksports neizdevās: ' + e); }
+      const path = await Store.exportFile(`${safeName(name)}.${ext}`, ext, content, ctxE.images, md ? 'Markdown' : t('txtLabel'), t('imgFolder'));
+      if (path) toast(t('exported', path) + (ctxE.images.length ? t('exportedImgs', ctxE.images.length) : ''));
+    } catch (e) { toast(t('exportFailed', e)); }
   }
   $('exportBtn').onclick = () => {
     const r = $('exportBtn').getBoundingClientRect();
-    const tab = current.tabs.find(t => t.id === current.activeTab);
+    const tab = current.tabs.find(x => x.id === current.activeTab);
     menu(r.left - 120, r.bottom + 4, [
-      { title: `Visa piezīme (${current.tabs.length} ${current.tabs.length === 1 ? 'cilne' : 'cilnes'})` },
-      { label: 'Markdown (.md)', icon: ICON.md, action: () => exportNote(current, 'all', 'md') },
-      { label: 'Teksts (.txt)', icon: ICON.txt, action: () => exportNote(current, 'all', 'txt') },
+      { title: t('exportAll', t('tabs', current.tabs.length)) },
+      { label: t('markdown'), icon: ICON.md, action: () => exportNote(current, 'all', 'md') },
+      { label: t('plainText'), icon: ICON.txt, action: () => exportNote(current, 'all', 'txt') },
       '-',
-      { title: `Tikai cilne “${tab.title}”` },
-      { label: 'Markdown (.md)', icon: ICON.md, action: () => exportNote(current, tab, 'md') },
-      { label: 'Teksts (.txt)', icon: ICON.txt, action: () => exportNote(current, tab, 'txt') }
+      { title: t('exportOnlyTab', tab.title) },
+      { label: t('markdown'), icon: ICON.md, action: () => exportNote(current, tab, 'md') },
+      { label: t('plainText'), icon: ICON.txt, action: () => exportNote(current, tab, 'txt') }
     ]);
   };
 
@@ -663,8 +780,8 @@
   function lastStatsFor(ed) {
     const cur = ed.page.querySelector('.gutter .cur');
     const spans = [...ed.page.querySelector('.gutter').children];
-    const t = ed.ed.innerText || '';
-    return { lines: spans.length, words: (t.match(/[^\s]+/g) || []).length, chars: t.replace(/\n/g, '').length, cur: cur ? spans.indexOf(cur) + 1 : 0 };
+    const txt = ed.ed.innerText || '';
+    return { lines: spans.length, words: (txt.match(/[^\s]+/g) || []).length, chars: txt.replace(/\n/g, '').length, cur: cur ? spans.indexOf(cur) + 1 : 0 };
   }
   function updateToolbarState(r) {
     document.querySelectorAll('#toolbar [data-cmd]').forEach(b => {
@@ -770,7 +887,7 @@
   }
   function buildPalette(id, colors, kind) {
     const box = $(id);
-    box.innerHTML = '<div class="sw-grid"></div><div class="pal-row"><button class="none">Bez krāsas</button><input type="color" title="Cita krāsa"></div>';
+    box.innerHTML = `<div class="sw-grid"></div><div class="pal-row"><button class="none">${esc(t('noColor'))}</button><input type="color" title="${esc(t('otherColor'))}"></div>`;
     const grid = box.querySelector('.sw-grid');
     colors.forEach(c => {
       const b = document.createElement('button');
@@ -789,8 +906,6 @@
       setColor(kind, c);
     });
   }
-  buildPalette('forePal', FORE, 'fore');
-  buildPalette('backPal', BACK, 'back');
   $('foreSwatch').style.background = lastFore;
   $('backSwatch').style.background = lastBack;
 
@@ -810,13 +925,13 @@
       });
       let n;
       while ((n = w.nextNode())) {
-        const t = n.textContent.toLowerCase();
-        let i = t.indexOf(q);
+        const txt = n.textContent.toLowerCase();
+        let i = txt.indexOf(q);
         while (i >= 0) {
           const r = document.createRange();
           r.setStart(n, i); r.setEnd(n, i + q.length);
           findRanges.push(r);
-          i = t.indexOf(q, i + q.length);
+          i = txt.indexOf(q, i + q.length);
         }
       }
     }
@@ -882,17 +997,17 @@
     if (e.key === 'Escape') { hideMenu(); document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open')); }
     if (ctrl && e.code === 'KeyF') { e.preventDefault(); $('search').focus(); $('search').select(); if (current) runFind(); return; }
     if (!current) {
-      if (ctrl && e.code === 'KeyN') { e.preventDefault(); newNotebook(); }
+      if (ctrl && e.code === 'KeyN') { e.preventDefault(); newNotebook(null); }
       return;
     }
     if (ctrl && e.code === 'KeyT') { e.preventDefault(); addTab(); }
-    else if (ctrl && e.code === 'KeyS') { e.preventDefault(); flushSave().then(() => toast('Saglabāts')); }
+    else if (ctrl && e.code === 'KeyS') { e.preventDefault(); flushSave().then(() => toast(t('saved'))); }
     else if (ctrl && (e.code === 'Equal' || e.code === 'NumpadAdd')) { e.preventDefault(); zoom += 0.1; applyZoom(true); }
     else if (ctrl && (e.code === 'Minus' || e.code === 'NumpadSubtract')) { e.preventDefault(); zoom -= 0.1; applyZoom(true); }
     else if (ctrl && (e.code === 'Digit0' || e.code === 'Numpad0')) { e.preventDefault(); zoom = 1; applyZoom(true); }
     else if (ctrl && e.key === 'Tab') {
       e.preventDefault();
-      const i = current.tabs.findIndex(t => t.id === current.activeTab);
+      const i = current.tabs.findIndex(x => x.id === current.activeTab);
       const n = current.tabs.length;
       switchTab(current.tabs[(i + (e.shiftKey ? -1 : 1) + n) % n].id);
     }
@@ -902,5 +1017,6 @@
 
   setInterval(() => { if (!current) renderHome(); }, 60e3);
 
+  applyLang();
   loadAll();
 })();

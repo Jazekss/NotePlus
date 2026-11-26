@@ -4,17 +4,18 @@ A small, fast, offline notebook for keeping project notes on Windows — a mix o
 
 Built with [Tauri 2](https://tauri.app) (Rust) and plain HTML/CSS/JS: ~6 MB executable, no account, no cloud, no telemetry.
 
-> **Language:** the interface is currently in Latvian. English UI / language switching is planned. Latvian docs: [README.lv.md](README.lv.md)
+> **Languages:** English, Latvian and Russian (detected from the system language, switchable with the language button in the title bar). Latvian docs: [README.lv.md](README.lv.md)
 
 <!-- TODO: add screenshots to docs/ and embed them here -->
 
 ## Features
 
 **Home screen**
-- Each project/note is a card: logo, title, color, short preview of its text, tab count, last change
+- Each project/note is a card: logo, title in the card's accent color, tab count, creation time and a short preview of the last active tab
+- **Categories** (e.g. Work / Personal) shown as labelled divider lines; drag a card to move it between categories
 - Four views like Windows folders: list, small, medium, large cards (buttons or **Ctrl + mouse wheel**)
 - Search across all notes, sort by last change / title / creation date
-- Cards tint green and show "Copied …" when you copied something from them in the last 24 h
+- A green copy icon shows when something was last copied from a note (hover for the time)
 - Orange dot = changes not yet written to disk
 
 **Editor**
@@ -24,10 +25,11 @@ Built with [Tauri 2](https://tauri.app) (Rust) and plain HTML/CSS/JS: ~6 MB exec
 - Markdown-like shortcuts at the start of a line: `- ` bullets, `1. ` numbered, `a. ` lettered, `[] ` checklist, ` ``` ` code block, `$$ ` command block
 - Code and command blocks in monospace font with a **copy button**
 - Every text block (separated by an empty line or a code block) gets a copy button on hover
+- **Copied text stays marked** with a faint green background (hover shows when) and the tab gets a copy icon, so you don't copy the same thing twice
 - Images: paste, drop or insert; resize by dragging the corner; hover for 1 s to open a large preview
 - Find in tab (Ctrl+F), zoom text (Ctrl + mouse wheel, Ctrl+0 to reset), light/dark theme
 - Autosave (no "Save" needed); deleted notes go to a `_trash` folder
-- **Export** a whole note or a single tab to **Markdown (.md)** or **plain text (.txt)** — images are saved to a `<name>_attēli` folder next to the file
+- **Export** a whole note or a single tab to **Markdown (.md)** or **plain text (.txt)** — images are saved to a `<name>_images` folder next to the file (folder name follows the UI language)
 
 **Window**
 - Frameless window with its own title bar: drag anywhere empty, double-click to maximize
@@ -60,7 +62,6 @@ Push a tag like `v0.2.0` — the GitHub Actions workflow builds the Windows inst
 
 ## Ideas / roadmap
 
-- English UI and language switching
 - Tags/folders and pinned notes
 - Sync through a user-chosen folder (OneDrive, Dropbox…)
 - Links between notes

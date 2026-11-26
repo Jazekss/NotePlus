@@ -1,5 +1,5 @@
 /* Datu glabāšana.
- * Tauri: katra grāmatiņa = JSON fails %APPDATA%\lv.noteplus.app\notebooks\<id>.json
+ * Tauri: katra piezīme = JSON fails %APPDATA%\lv.noteplus.app\notebooks\<id>.json
  * Pārlūkā (testēšanai): localStorage. */
 const Store = (() => {
   const tauri = window.__TAURI__ && window.__TAURI__.core;
@@ -33,11 +33,24 @@ const Store = (() => {
     return 'localStorage (pārlūka režīms)';
   }
 
+  /** Kopīgie iestatījumi (kategorijas) */
+  async function loadMeta() {
+    try {
+      const txt = tauri ? await tauri.invoke('load_meta') : localStorage.getItem('np_meta');
+      return txt ? JSON.parse(txt) : {};
+    } catch (e) { return {}; }
+  }
+  async function saveMeta(meta) {
+    const data = JSON.stringify(meta);
+    if (tauri) return await tauri.invoke('save_meta', { data });
+    localStorage.setItem('np_meta', data);
+  }
+
   /** Eksports: Tauri – saglabāšanas dialogs; pārlūkā – lejupielāde (bez attēlu failiem) */
-  async function exportFile(defaultName, ext, content, images) {
-    if (tauri) return await tauri.invoke('export_note', { defaultName, ext, content, images });
+  async function exportFile(defaultName, ext, content, images, label, imgSuffix) {
+    if (tauri) return await tauri.invoke('export_note', { defaultName, ext, content, images, label, imgSuffix });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([content.replaceAll('{{IMGDIR}}', defaultName.replace(/\.\w+$/, '') + '_attēli')], { type: 'text/plain' }));
+    a.href = URL.createObjectURL(new Blob([content.replaceAll('{{IMGDIR}}', defaultName.replace(/\.\w+$/, '') + '_' + imgSuffix)], { type: 'text/plain' }));
     a.download = defaultName;
     a.click();
     return defaultName;
@@ -45,7 +58,7 @@ const Store = (() => {
 
   const win = window.__TAURI__ && window.__TAURI__.window ? window.__TAURI__.window.getCurrentWindow() : null;
 
-  return { list, save, remove, dataDir, exportFile, win, isTauri: !!tauri };
+  return { list, save, remove, dataDir, loadMeta, saveMeta, exportFile, win, isTauri: !!tauri };
 })();
 
 function uid() {

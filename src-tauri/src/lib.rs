@@ -72,6 +72,30 @@ fn data_dir(app: AppHandle) -> Result<String, String> {
     Ok(notebooks_dir(&app)?.to_string_lossy().to_string())
 }
 
+/// Kopīgie iestatījumi (kategorijas u.c.): %APPDATA%\lv.noteplus.app\meta.json
+fn meta_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("meta.json"))
+}
+
+#[tauri::command]
+fn load_meta(app: AppHandle) -> Result<Option<String>, String> {
+    let p = meta_path(&app)?;
+    if !p.exists() {
+        return Ok(None);
+    }
+    fs::read_to_string(p).map(Some).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_meta(app: AppHandle, data: String) -> Result<(), String> {
+    let p = meta_path(&app)?;
+    let tmp = p.with_extension("json.tmp");
+    fs::write(&tmp, data).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &p).map_err(|e| e.to_string())
+}
+
 #[derive(Deserialize)]
 struct ExportImage {
     name: String,
@@ -86,13 +110,14 @@ async fn export_note(
     ext: String,
     content: String,
     images: Vec<ExportImage>,
+    label: String,
+    img_suffix: String,
 ) -> Result<Option<String>, String> {
-    let label = if ext == "md" { "Markdown" } else { "Teksta fails" };
     let picked = app
         .dialog()
         .file()
         .set_file_name(&default_name)
-        .add_filter(label, &[ext.as_str()])
+        .add_filter(&label, &[ext.as_str()])
         .blocking_save_file();
     let Some(fp) = picked else { return Ok(None) };
     let path = fp.into_path().map_err(|e| e.to_string())?;
@@ -100,7 +125,11 @@ async fn export_note(
         .file_stem()
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_else(|| "export".into());
-    let dir_name = format!("{stem}_attēli");
+    let suffix: String = img_suffix
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
+        .collect();
+    let dir_name = format!("{stem}_{suffix}");
     let content = content.replace("{{IMGDIR}}", &dir_name);
     if !images.is_empty() {
         let dir = path.parent().ok_or("Nederīgs ceļš")?.join(&dir_name);
@@ -128,6 +157,8 @@ pub fn run() {
             save_notebook,
             delete_notebook,
             data_dir,
+            load_meta,
+            save_meta,
             export_note
         ])
         .run(tauri::generate_context!())
